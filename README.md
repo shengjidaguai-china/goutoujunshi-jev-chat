@@ -18,7 +18,7 @@
 
 [合并后的 main 构建](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/actions/runs/37172091002)已通过 Android 单元测试与 APK 构建，以及 Mac、Windows 构建；本轮未做 Android 真机验收。
 
-**下载版本请分清：** 当前 Release `v0.1.5-preview` 基于本次合并前的代码。要使用这次修复，请从 [GitHub Actions 构建页](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/actions/workflows/platform-build.yml)选择包含该 PR 的 `main` 构建，待 Android 任务成功后下载 APK；操作见 [Android 使用说明](integrations/jev_android/README.md)。合并源码不会自动替换已有 Release 附件。
+**本次打包版本：`v0.1.6-preview`。** Android APK、Windows 预览 ZIP 与 Mac 源码 ZIP 均从包含本次合并的 `main` 重新构建。请从 [GitHub Releases 下载页](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/releases/latest)下载对应文件，按同页 `SHA256SUMS.txt` 校验。`v0.1.5-preview` 及更早版本尚未包含 PR #1。Android 的安装、DeepSeek 配置与通用截屏入口见 [Android 使用说明](integrations/jev_android/README.md)。
 
 Android 仍处于预览阶段，微信仍不支持。核对中隐藏／停用助手、DeepSeek 判断的关系上下文、候选格式校验等问题仍待修复，详情见 Android 使用说明。本次合并覆盖原文核对页与焦点恢复的修复。
 

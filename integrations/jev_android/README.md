@@ -16,14 +16,14 @@
 
 ## 获取包含本次修复的 APK
 
-现有 Release `v0.1.5-preview` 基于合并前的代码，尚未包含 PR #1。本次没有更改 APK 版本号，请按构建提交区分安装包。
+本次 APK 版本为 `0.1.6-preview`（安装版本号 6），对应 Release `v0.1.6-preview`，包含 PR #1。`v0.1.5-preview` 及更早版本尚未包含该修复。
 
-1. 打开 [Platform preview packages 构建页](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/actions/workflows/platform-build.yml)。
-2. 选择 `main` 分支中包含合并提交 `e75a43e` 或其后续提交的运行记录，确认 Android 任务成功。
-3. 登录 GitHub，在该次运行的 Artifacts 中下载 `goutoujunshi-jev-chat-android-debug`。
-4. 解压附件，安装其中的 `app-debug.apk`。调试签名不一致时需卸载旧包再安装，卸载会清除应用数据。
+1. 打开 [GitHub Releases 下载页](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/releases/latest)，选择 `v0.1.6-preview` 或更新版本。
+2. 下载 `goutoujunshi-jev-chat-android-debug.apk`，可按同页 `SHA256SUMS.txt` 校验文件。
+3. 在 Android 11 或更新版本上允许系统安装此来源的应用后安装。
+4. 调试签名不一致时需卸载旧包再安装，卸载会清除应用数据；先记录好需要保留的设置。
 
-GitHub Actions 附件有保留期限；附件过期时可按下方命令从最新 `main` 构建。合并源码后，已有 Release 的 APK 不会自动更新。
+开发构建也可从 [Platform preview packages 构建页](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/actions/workflows/platform-build.yml)获取：选择包含 PR #1 的成功运行，在 Artifacts 中下载 `goutoujunshi-jev-chat-android-debug`，解压安装 `app-debug.apk`。GitHub Actions 附件有保留期限，过期时可从最新源码重新构建。
 
 ## 安装与配置
 

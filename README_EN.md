@@ -18,7 +18,7 @@ On October 4, 2026, [PR #1](https://github.com/shengjidaguai-china/goutoujunshi-
 
 The [post-merge main run](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/actions/runs/37172091002) passed Android unit tests and APK assembly, plus the Mac and Windows builds. Android device validation was not performed in this round.
 
-**Choose the build carefully:** The current Release, `v0.1.5-preview`, predates this merge. To try the fix, select a `main` run containing this PR on the [GitHub Actions build page](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/actions/workflows/platform-build.yml), wait for its Android job to succeed, and download the APK. See the [Android guide](integrations/jev_android/README.md) for instructions. Merging source does not replace existing Release attachments.
+**Package version: `v0.1.6-preview`.** The Android APK, Windows preview ZIP, and Mac source ZIP are rebuilt from `main` with this merge included. Download the files from [GitHub Releases](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/releases/latest) and verify them against `SHA256SUMS.txt` on the release page. Version `v0.1.5-preview` and earlier do not include PR #1. See the [Android guide](integrations/jev_android/README.md) for installation, DeepSeek configuration, and manual screenshot recognition.
 
 Android remains a preview, and WeChat remains unsupported. The Android guide also lists pending issues with hiding or disabling the assistant during review, relationship context in DeepSeek judgment, and candidate format validation. This merge covers transcript review and focus restoration only.
 

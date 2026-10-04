@@ -24,8 +24,8 @@ android {
         applicationId = "com.goutoujunshi.chat"
         minSdk = 30
         targetSdk = 35
-        versionCode = 5
-        versionName = "0.1.5-preview"
+        versionCode = 6
+        versionName = "0.1.6-preview"
 
         // ML Kit's bundled Chinese recognizer ships native libs for every ABI.
         // The target phone (and every phone this can run on: minSdk 30) is
