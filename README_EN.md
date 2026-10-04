@@ -1,4 +1,4 @@
-<!-- README_SYNC: source=working-tree; updated=2026-09-28 -->
+<!-- README_SYNC: source=working-tree; updated=2026-10-04 -->
 
 <p align="center"><a href="./README.md">简体中文</a> · English</p>
 
@@ -7,6 +7,20 @@
 **Goutoujunshi beside your chat window: screen reading, analysis, and reply drafts.** This standalone project builds on [Goutoujunshi](https://github.com/shengjidaguai-china/goutoujunshi). The public downloads are a Mac source preview, a Windows preview ZIP, and an Android debug APK. The Android build currently cannot capture WeChat chat screenshots, so WeChat is unsupported. Windows and Android still need device-level validation. You decide whether to send every draft.
 
 If it helps you, [Star the project](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/stargazers) so you can find it again and help others discover it.
+
+## Latest update: Android transcript review
+
+On October 4, 2026, [PR #1](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/pull/1) was merged into `main`. It addresses transcript review disappearing or looping in apps such as Soul that use manual screenshot recognition:
+
+- Accessibility window events are ignored while the review editor is open, preventing overlay focus changes from replacing the review with an idle panel.
+- After “Confirm transcript and analyze,” the service waits up to about one second for focus to return to the original chat app before validating the window and starting analysis.
+- Switching chat apps or failing to restore the window shows an error. Unit tests cover the related state decisions.
+
+The [post-merge main run](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/actions/runs/37172091002) passed Android unit tests and APK assembly, plus the Mac and Windows builds. Android device validation was not performed in this round.
+
+**Choose the build carefully:** The current Release, `v0.1.5-preview`, predates this merge. To try the fix, select a `main` run containing this PR on the [GitHub Actions build page](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/actions/workflows/platform-build.yml), wait for its Android job to succeed, and download the APK. See the [Android guide](integrations/jev_android/README.md) for instructions. Merging source does not replace existing Release attachments.
+
+Android remains a preview, and WeChat remains unsupported. The Android guide also lists pending issues with hiding or disabling the assistant during review, relationship context in DeepSeek judgment, and candidate format validation. This merge covers transcript review and focus restoration only.
 
 ## Mac, Windows, and Android preview packages
 

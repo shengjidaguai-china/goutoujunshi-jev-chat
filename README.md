@@ -1,4 +1,4 @@
-<!-- README_SYNC: source=working-tree; updated=2026-09-28 -->
+<!-- README_SYNC: source=working-tree; updated=2026-10-04 -->
 
 <p align="center">简体中文 · <a href="./README_EN.md">English</a></p>
 
@@ -7,6 +7,20 @@
 **聊天窗口旁的狗头军师：读屏、分析、生成回复草稿。** 这是从[狗头军师](https://github.com/shengjidaguai-china/goutoujunshi)延伸出来的独立项目。目前公开提供 Mac 源码预览包、Windows 预览 ZIP 和 Android 调试 APK。Android 版目前无法截取微信聊天画面，暂不支持微信；Windows 和 Android 仍需实机测试。发送始终由用户决定。
 
 如果这套聊天副驾对你有用，可以给[项目点一个 Star](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/stargazers)，方便以后找到，也让更多有相同需求的人看到它。
+
+## 最近更新：Android 原文核对流程
+
+2026 年 10 月 4 日，[PR #1](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/pull/1) 已合并到 `main`。本次修复针对 Soul 等通过手动截图识别的应用中，原文核对页消失或循环返回的问题：
+
+- 核对页编辑文字时，忽略核对期间的无障碍窗口事件，避免焦点变化把页面替换成待机状态。
+- 点「确认原文并分析」后，最多等待约一秒，让焦点回到原聊天应用，再验证窗口并开始分析。
+- 如果已切换聊天应用，或窗口未恢复，显示提示；新增对应的状态判断单元测试。
+
+[合并后的 main 构建](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/actions/runs/37172091002)已通过 Android 单元测试与 APK 构建，以及 Mac、Windows 构建；本轮未做 Android 真机验收。
+
+**下载版本请分清：** 当前 Release `v0.1.5-preview` 基于本次合并前的代码。要使用这次修复，请从 [GitHub Actions 构建页](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/actions/workflows/platform-build.yml)选择包含该 PR 的 `main` 构建，待 Android 任务成功后下载 APK；操作见 [Android 使用说明](integrations/jev_android/README.md)。合并源码不会自动替换已有 Release 附件。
+
+Android 仍处于预览阶段，微信仍不支持。核对中隐藏／停用助手、DeepSeek 判断的关系上下文、候选格式校验等问题仍待修复，详情见 Android 使用说明。本次合并覆盖原文核对页与焦点恢复的修复。
 
 ## Mac、Windows 与 Android 预览包
 
