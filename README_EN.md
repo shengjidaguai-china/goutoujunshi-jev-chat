@@ -8,6 +8,8 @@
 
 If it helps you, [Star the project](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/stargazers) so you can find it again and help others discover it.
 
+**Thanks to PR contributor [@RayWangQvQ (在7楼)](https://github.com/RayWangQvQ)** for [PR #1](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/pull/1), fixing disappearing transcript review and confirmation loops in Android's generic screenshot flow, with focus-restoration tests. The contributor reported Soul device validation in the PR. Full attribution appears under “Contributors and acknowledgments.”
+
 ## Illustrated Android guide: DeepSeek setup and Soul
 
 [Read the complete guide](documentation/guides/android-deepseek/README.md) (Chinese), with **10 actual page screenshots** covering DeepSeek API top-ups, key creation and copying, Android installation and permissions, image recognition, strategy judgment, reply drafts, and the manual screenshot/review workflow in Soul.
@@ -16,14 +18,24 @@ For a DeepSeek-only setup, select **DeepSeek official** for strategy judgment an
 
 Soul uses the generic manual screenshot path: open a chat, long-press the assistant bubble, recognize one screenshot, review and confirm the transcript, then copy a candidate and paste/send it yourself. Device and app versions still require validation. **The current Android preview does not support WeChat.**
 
-The tutorial includes screenshots of the local updated build. The combined configuration card and new system-capture option are not included in the public `v0.1.7-preview` package. In that package, the separate Jev endpoint card can be left blank when DeepSeek strategy judgment is selected. The guide explains these differences.
+**Download `v0.1.8-preview` or later.** The combined configuration card and system-capture option shown in the tutorial are included in the new APK. They are absent from `v0.1.7-preview`.
 
 <p>
   <img src="documentation/guides/android-deepseek/images/02-DeepSeek判断与回复.png" width="320" alt="Android DeepSeek strategy and reply settings, with keys hidden">
   <img src="documentation/guides/android-deepseek/images/04-识图开关与截屏方式.png" width="320" alt="Vision recognition and capture settings in the local updated build">
 </p>
 
-## Latest update: Android review, cancellation, and DeepSeek context
+## Latest release: v0.1.8-preview
+
+- Detailed analysis and reply explanations now accept JSON code fences. Clicking shows loading immediately; failures show an actionable reason, with retry and return-to-candidates controls. Both features use the reply endpoint, with no separate configuration.
+- Strategy configuration is combined into one area: selecting Jev or DeepSeek shows that provider's endpoint fields. Existing saved settings remain usable.
+- Choose Accessibility or system capture under Settings → Analysis → Manual capture method. Both use the bubble's “Recognize one screenshot” entry. System capture requires Android consent every time.
+- Black or incomplete captures are rejected before OCR, with retry guidance. Some emulators can still return black or cropped images; WeChat remains unsupported.
+- All **50 Android unit tests pass**, and debug APK assembly passes. Windows and Mac are repackaged alongside Android; their capture and analysis logic was not changed in this round. Complete model requests on users' phones still need device validation.
+
+Download packages and checksums from [GitHub Releases](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/releases/latest). An older debug APK with a different signature cannot be updated in place. Record your settings before uninstalling it; uninstalling clears local app data.
+
+## Previous update: Android review, cancellation, and DeepSeek context
 
 On October 6, 2026, the Android implementation was updated:
 
@@ -42,7 +54,7 @@ On October 4, 2026, [PR #1](https://github.com/shengjidaguai-china/goutoujunshi-
 
 The [post-merge main run](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/actions/runs/37172091002) passed Android unit tests and APK assembly, plus the Mac and Windows builds. Android device validation was not performed in this round.
 
-**Package version: `v0.1.7-preview`.** The Android APK includes these fixes. Windows and Mac packages are rebuilt alongside it; their capture and analysis logic was not changed in this round. Download the files from [GitHub Releases](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/releases/latest) and verify them against `SHA256SUMS.txt` on the release page. Version `v0.1.6-preview` includes PR #1 but not these fixes. See the [Android guide](integrations/jev_android/README.md) for installation, DeepSeek configuration, and manual screenshot recognition.
+**These fixes are included in `v0.1.7-preview` and the latest `v0.1.8-preview`.** Windows and Mac packages are rebuilt alongside Android; their capture and analysis logic was not changed in this round. Download the files from [GitHub Releases](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/releases/latest) and verify them against `SHA256SUMS.txt` on the release page. Version `v0.1.6-preview` includes PR #1 but not these fixes. See the [Android guide](integrations/jev_android/README.md) for installation, DeepSeek configuration, and manual screenshot recognition.
 
 Android remains a preview, and WeChat remains unsupported. Automated tests cover the updated logic; overlay focus, device capture support, and actual model compatibility still require device-level validation. Requests already sent to a provider cannot be recalled; disabling cancels subsequent steps and discards stale results.
 

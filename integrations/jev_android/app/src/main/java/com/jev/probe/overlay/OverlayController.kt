@@ -382,6 +382,9 @@ class OverlayController(private val ctx: Context) {
         noteText = null
         evidenceSnapshot = null
         replyError = null
+        dangerDot?.background = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL; setColor(Color.TRANSPARENT)
+        }
         contentBox?.removeAllViews()
     }
 
@@ -434,6 +437,17 @@ class OverlayController(private val ctx: Context) {
             hint(msg)))
     }
 
+    fun showCaptureFallback(message: String, onRetry: () -> Unit) {
+        ensureRoot()
+        setContent(listOf(
+            line("截屏未完成", "#24382d", 16f, true),
+            hint(message),
+            hint("在设置的「手动截屏方式」中选择无障碍截屏或系统截屏。系统截屏需 Android 确认，读取一张画面后立即停止。"),
+            bigButton("设置截屏方式") { openSettings() },
+            bigButton("重试截屏", onRetry)))
+        if (!expanded) toggle()
+    }
+
     fun showJudgment(a: Analysis) {
         lastJudgment = a
         render(a, generating = true)
@@ -447,12 +461,31 @@ class OverlayController(private val ctx: Context) {
         render(a, generating = false)
     }
 
+    fun showCandidateReplies() {
+        lastJudgment?.let { render(it, generating = false) }
+    }
+
+    fun showExplanationLoading(heading: String, onBack: () -> Unit) {
+        ensureRoot()
+        setContent(listOf(line(heading, "#24382d", 17f, true),
+            hint("正在通过回复接口生成$heading，请稍候…"),
+            bigButton("返回候选回复", onBack)))
+        if (!expanded) toggle()
+    }
+
+    fun showExplanationError(heading: String, message: String, onRetry: () -> Unit, onBack: () -> Unit) {
+        ensureRoot()
+        setContent(listOf(line(heading, "#24382d", 17f, true), hint(message),
+            bigButton("重试", onRetry), bigButton("返回候选回复", onBack)))
+        if (!expanded) toggle()
+    }
+
     fun showDetails(text: String, heading: String = "详细分析") {
         ensureRoot()
         setContent(listOf(line(heading, "#24382d", 17f, true),
             hint("分析来自当前已核对的原文；推测与事实分开看。"),
             line(text, "#374151", 13f),
-            bigButton("返回候选回复") { lastJudgment?.let { render(it, generating = false) } }))
+            bigButton("返回候选回复") { showCandidateReplies() }))
         if (!expanded) toggle()
     }
 

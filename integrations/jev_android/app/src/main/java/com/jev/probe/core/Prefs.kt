@@ -140,6 +140,13 @@ class Prefs(context: Context, prefsName: String = PREFS_MAIN) {
 
     // ------------------------------------------------------------ OCR (B)
 
+    /** Screenshot acquisition is independent of the OCR/model selection. */
+    var captureMethod: String
+        get() = if (sp.getString(K_CAPTURE_METHOD, CAPTURE_ACCESSIBILITY) == CAPTURE_SYSTEM)
+            CAPTURE_SYSTEM else CAPTURE_ACCESSIBILITY
+        set(v) = sp.edit().putString(K_CAPTURE_METHOD,
+            if (v == CAPTURE_SYSTEM) CAPTURE_SYSTEM else CAPTURE_ACCESSIBILITY).apply()
+
     /** "mlkit" | "vision". */
     var ocrEngine: String
         get() = sp.getString(K_OCR_ENGINE, OCR_MLKIT) ?: OCR_MLKIT
@@ -275,6 +282,7 @@ class Prefs(context: Context, prefsName: String = PREFS_MAIN) {
         private const val K_CTX_COUNT = "context_history_count"
         private const val K_AUTO_SUMMARY = "auto_summary"
         private const val K_OCR_ENGINE = "ocr_engine"
+        private const val K_CAPTURE_METHOD = "capture_method"
         private const val K_OCR_UNKNOWN = "ocr_unknown_apps"
         private const val K_OCR_FALLBACK = "ocr_fallback"
         private const val K_OCR_AUTO = "ocr_auto_analyze"
@@ -292,6 +300,8 @@ class Prefs(context: Context, prefsName: String = PREFS_MAIN) {
 
         const val OCR_MLKIT = "mlkit"
         const val OCR_VISION = "vision"
+        const val CAPTURE_ACCESSIBILITY = "accessibility"
+        const val CAPTURE_SYSTEM = "system"
 
         // Judge route presets.
         const val DEFAULT_JUDGE_BASE_OPENROUTER = "https://openrouter.ai/api"

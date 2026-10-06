@@ -71,25 +71,38 @@ class SettingsActivity : AppCompatActivity() {
         // =================== 接口 ===================
         root.addView(section("接口"))
 
-        // Mac-aligned strategy choice. DeepSeek is an independent official route;
-        // its key can reuse the reply key only when the reply host is DeepSeek.
+        // One strategy card; show only the selected source's configuration.
+        // Both sets of fields remain in memory so switching preserves edits.
         val strategyCard = card()
         strategyCard.addView(cardTitle("策略判断"))
-        strategyCard.addView(text("Jev 或 DeepSeek 独立判断；回复模型在下方单独选择。", 12f, sub))
+        strategyCard.addView(text("分析可能的意图、选择沟通策略，并给候选回复排序。回复生成在下方配置。", 12f, sub))
+        strategyCard.addView(label("判断来源"))
+        val deepseekFields = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val jevFields = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         var strategyIdx = if (prefs.strategyProvider == "deepseek") 1 else 0
+        fun showStrategyFields() {
+            deepseekFields.visibility = if (strategyIdx == 1) View.VISIBLE else View.GONE
+            jevFields.visibility = if (strategyIdx == 0) View.VISIBLE else View.GONE
+        }
         strategyCard.addView(pills(listOf("Jev", "DeepSeek 官方"), strategyIdx) {
             strategyIdx = it
+            showStrategyFields()
         })
-        strategyCard.addView(label("DeepSeek 策略模型"))
+        showStrategyFields()
+
+        // DeepSeek uses its official address; the key may reuse the reply key.
+        deepseekFields.addView(label("接口地址"))
+        deepseekFields.addView(text(Prefs.DEEPSEEK_BASE, 13f, sub))
+        deepseekFields.addView(label("模型"))
         val strategyModelEdit = edit(prefs.strategyModel, "deepseek-flash")
-        strategyCard.addView(strategyModelEdit)
-        strategyCard.addView(label("DeepSeek 策略密钥"))
-        val strategyKeyEdit = edit(prefs.strategyKey, "仅在选择 DeepSeek 时使用", password = true)
-        strategyCard.addView(strategyKeyEdit)
-        strategyCard.addView(text("回复接口也选 DeepSeek 官方时，可复用下方回复密钥。" +
-            "策略 token 权重只在三次标签轮换一致时展示，不能当作回复成功率。", 11f, sub))
+        deepseekFields.addView(strategyModelEdit)
+        deepseekFields.addView(label("API 密钥"))
+        val strategyKeyEdit = edit(prefs.strategyKey, "留空时复用同服务的回复密钥", password = true)
+        deepseekFields.addView(strategyKeyEdit)
+        deepseekFields.addView(text("回复接口也选 DeepSeek 官方时，可复用下方回复密钥。" +
+            "排序权重仅供比较，不代表回复成功率。", 11f, sub))
         val strategyResult = resultText()
-        strategyCard.addView(cardBtn("测试 DeepSeek 策略") {
+        deepseekFields.addView(cardBtn("测试策略判断") {
             val model = strategyModelEdit.text.toString().trim()
             val key = RouteKeys.strategy(strategyKeyEdit.text.toString().trim(),
                 replyKeyEdit.text.toString().trim(), replyBaseInput.text.toString().trim())
@@ -107,13 +120,9 @@ class SettingsActivity : AppCompatActivity() {
                     (if (result.strategyWeights.isEmpty()) "token 权重暂不可用" else "已取得策略相对权重") }
             }
         })
-        strategyCard.addView(strategyResult)
-        root.addView(strategyCard)
+        deepseekFields.addView(strategyResult)
 
-        // --- 判断接口（Jev） ---
-        val judgeCard = card()
-        judgeCard.addView(cardTitle("判断接口（Jev）"))
-        judgeCard.addView(text("选 Jev 策略时使用；选 DeepSeek 策略时可留空。", 12f, sub))
+        // Jev connection options belong to the same strategy card.
 
         val judgeBaseEdit = edit(prefs.judgeBaseUrl, Prefs.DEFAULT_JUDGE_BASE_OPENROUTER)
         val judgeModelEdit = edit(prefs.judgeModel, Prefs.DEFAULT_JUDGE_MODEL_OPENROUTER)
@@ -122,7 +131,8 @@ class SettingsActivity : AppCompatActivity() {
             Prefs.PROVIDER_CUSTOM -> 2
             else -> 0
         }
-        judgeCard.addView(pills(
+        jevFields.addView(label("接入渠道"))
+        jevFields.addView(pills(
             listOf("OpenRouter", "TypeSafe 直连", "自定义"), judgeProviderIdx) { idx ->
             judgeProviderIdx = idx
             when (idx) {
@@ -140,16 +150,16 @@ class SettingsActivity : AppCompatActivity() {
                 2 -> judgeBaseEdit.setText(expandJudgeUrl(judgeBaseEdit.text.toString()))
             }
         })
-        judgeCard.addView(label("Base URL"))
-        judgeCard.addView(judgeBaseEdit)
-        judgeCard.addView(text("OpenRouter 拼 /alpha/decisions；TypeSafe 拼 /v1/systemone；自定义按原样 POST。",
+        jevFields.addView(label("接口地址"))
+        jevFields.addView(judgeBaseEdit)
+        jevFields.addView(text("OpenRouter 拼 /alpha/decisions；TypeSafe 拼 /v1/systemone；自定义按原样 POST。",
             11f, sub))
-        judgeCard.addView(label("密钥"))
-        judgeCard.addView(edit(prefs.judgeKey, "sk-...", password = true).also { judgeKeyEdit = it })
-        judgeCard.addView(label("模型"))
-        judgeCard.addView(judgeModelEdit)
+        jevFields.addView(label("API 密钥"))
+        jevFields.addView(edit(prefs.judgeKey, "sk-...", password = true).also { judgeKeyEdit = it })
+        jevFields.addView(label("模型"))
+        jevFields.addView(judgeModelEdit)
         val judgeResult = resultText()
-        judgeCard.addView(cardBtn("测试判断") {
+        jevFields.addView(cardBtn("测试策略判断") {
             val base = judgeBaseEdit.text.toString().trim()
             val key = judgeKeyEdit.text.toString().trim()
             val model = judgeModelEdit.text.toString().trim()
@@ -185,8 +195,10 @@ class SettingsActivity : AppCompatActivity() {
                 }
             }
         })
-        judgeCard.addView(judgeResult)
-        root.addView(judgeCard)
+        jevFields.addView(judgeResult)
+        strategyCard.addView(deepseekFields)
+        strategyCard.addView(jevFields)
+        root.addView(strategyCard)
 
         // --- 回复接口 ---
         val replyCard = card()
@@ -312,7 +324,7 @@ class SettingsActivity : AppCompatActivity() {
         // =================== 分析 ===================
         root.addView(section("分析"))
         val card2 = card()
-        card2.addView(label("关系描述（给 Jev 判断用）"))
+        card2.addView(label("关系描述（用于策略分析）"))
         val relEdit = edit(prefs.relationship, Prefs.DEFAULT_REL)
         card2.addView(relEdit)
         card2.addView(label("会话白名单（每行一个关键词，空=所有会话）"))
@@ -324,6 +336,21 @@ class SettingsActivity : AppCompatActivity() {
         card2.addView(autoRow)
 
         // --- OCR 兜底（B 阶段）---
+        card2.addView(label("手动截屏方式"))
+        var captureMethodIdx = if (prefs.captureMethod == Prefs.CAPTURE_SYSTEM) 1 else 0
+        val captureMethodHint = text("", 11f, sub)
+        fun refreshCaptureMethodHint() {
+            captureMethodHint.text = if (captureMethodIdx == 1)
+                "每次截屏需在 Android 弹窗中确认。只读取一张画面，完成后立即停止；适合无障碍截屏返回黑屏时使用。"
+            else "使用已开启的无障碍服务截屏，不会每次弹出授权。部分模拟器可能返回黑屏，可改选系统截屏。"
+        }
+        card2.addView(pills(listOf("无障碍截屏", "系统截屏"), captureMethodIdx) {
+            captureMethodIdx = it
+            refreshCaptureMethodHint()
+        })
+        refreshCaptureMethodHint()
+        card2.addView(captureMethodHint)
+        card2.addView(text("保存后，悬浮球的「截屏识别一次」按所选方式执行。自动 OCR 仍使用无障碍截屏，不会自动打开系统授权。", 11f, sub))
         card2.addView(label("截图识图方式"))
         var ocrEngineIdx = if (prefs.ocrEngine == Prefs.OCR_VISION) 1 else 0
         card2.addView(pills(listOf("ML Kit 本地", "视觉模型（DeepSeek 等）"), ocrEngineIdx) {
@@ -448,6 +475,7 @@ class SettingsActivity : AppCompatActivity() {
                 .map { it.trim() }.filter { it.isNotEmpty() }.toSet()
             prefs.autoAnalyze = (autoRow.tag as? Boolean) ?: false
             prefs.ocrFallback = (ocrFallbackRow.tag as? Boolean) ?: true
+            prefs.captureMethod = if (captureMethodIdx == 1) Prefs.CAPTURE_SYSTEM else Prefs.CAPTURE_ACCESSIBILITY
             prefs.ocrEngine = if (ocrEngineIdx == 1) Prefs.OCR_VISION else Prefs.OCR_MLKIT
             prefs.ocrAutoAnalyze = (ocrAutoRow.tag as? Boolean) ?: false
             prefs.contextEnabled = (ctxRow.tag as? Boolean) ?: false

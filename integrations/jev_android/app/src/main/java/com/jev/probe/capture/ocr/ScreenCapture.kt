@@ -155,6 +155,9 @@ class ScreenCapture(
             runCatching { hw?.recycle() }
             if (bmp == null) {
                 Result.Failed(CODE_INTERNAL, "截屏失败：拿到的画面读不出来")
+            } else if (isBlackFrame(bmp)) {
+                bmp.recycle()
+                Result.Failed(CODE_BLACK_FRAME, humanMessage(CODE_BLACK_FRAME))
             } else {
                 val dm = service.resources.displayMetrics
                 val w = window?.width() ?: dm.widthPixels
@@ -177,6 +180,7 @@ class ScreenCapture(
         const val CODE_THROTTLED = -1
         /** Our own watchdog: the platform callback never arrived. */
         const val CODE_TIMEOUT = -2
+        const val CODE_BLACK_FRAME = -3
         private const val CODE_INTERNAL = 1
 
         private const val MIN_INTERVAL_MS = 1000L
@@ -203,6 +207,7 @@ class ScreenCapture(
         fun humanMessage(code: Int): String = when (code) {
             CODE_THROTTLED -> "截屏太频繁"
             CODE_TIMEOUT -> "截屏超时"
+            CODE_BLACK_FRAME -> "无障碍截屏返回全黑画面，请在设置中选择系统截屏"
             1 -> "截屏失败：内部错误（系统拒绝，可能是该无障碍服务不被允许截屏）"
             2 -> "截屏失败：无障碍服务未声明截屏能力（去设置里把无障碍关掉再开启）"
             3 -> "截屏失败：间隔太短，等一秒再试"

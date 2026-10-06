@@ -93,17 +93,7 @@ class ReplyClient(private val prefs: Prefs) {
         val rel = ctx?.contact?.relationship?.takeIf { it.isNotBlank() } ?: relationship
         val user = knowledgeBlock(rel, ctx) + "关系：$rel\n主策略：${judgment.strategy ?: judgment.bestAction?.choice ?: "未知"}" +
             "\n已核对原文：\n$convo"
-        val data = JSONObject(chat(sys, user, temperature = 0.4))
-        fun list(key: String): String {
-            val rows = data.optJSONArray(key) ?: return "仍未知"
-            return (0 until minOf(rows.length(), 5)).map { "• " + rows.optString(it).take(200) }
-                .joinToString("\n").ifBlank { "仍未知" }
-        }
-        return "对方可能的意图\n${data.optString("intent", "证据不足，暂无法判断")}\n\n" +
-            "先照顾好自己的感受\n${data.optString("support", "先不急着下结论")}\n\n" +
-            "已知事实\n${list("facts")}\n\n合理推测\n${list("hypotheses")}\n\n" +
-            "仍未知\n${list("unknowns")}\n\n下一步\n${data.optString("next_step", "先核对原文")}\n\n" +
-            "停止条件\n${data.optString("stop_condition", GoutouGuidance.stopCondition)}"
+        return ExplanationFormat.details(chat(sys, user, temperature = 0.4))
     }
 
     fun explain(snapshot: ChatSnapshot, relationship: String, judgment: Analysis, candidate: String, ctx: ChatContext? = null): String {
@@ -118,11 +108,7 @@ class ReplyClient(private val prefs: Prefs) {
             .put("transcript", transcript)
             .put("strategy", judgment.strategy ?: judgment.bestAction?.choice)
             .put("candidate", candidate).toString()
-        val data = JSONObject(chat(system, user, temperature = 0.3))
-        val reason = data.optString("reason").trim()
-        val tradeoff = data.optString("tradeoff").trim()
-        require(reason.isNotBlank() && tradeoff.isNotBlank()) { "模型没有返回可用的理由和代价" }
-        return "候选回复\n$candidate\n\n理由\n${reason.take(400)}\n\n代价\n${tradeoff.take(400)}"
+        return ExplanationFormat.explain(chat(system, user, temperature = 0.3), candidate)
     }
 
     /** Rewrite only current candidates from verified messages sent by this user. */

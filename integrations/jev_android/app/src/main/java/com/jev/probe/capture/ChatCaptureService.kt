@@ -1,6 +1,7 @@
 package com.jev.probe.capture
 
 import android.accessibilityservice.AccessibilityService
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Rect
 import android.os.Bundle
@@ -9,6 +10,10 @@ import android.os.Looper
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import com.jev.probe.CaptureInputActivity
+import com.jev.probe.capture.ocr.CaptureHandoff
+import com.jev.probe.capture.ocr.CaptureReadiness
+import com.jev.probe.capture.ocr.captureReadiness
 import com.jev.probe.capture.ocr.MlKitOcr
 import com.jev.probe.capture.ocr.OcrLine
 import com.jev.probe.capture.ocr.ScreenCapture
@@ -23,6 +28,7 @@ import com.jev.probe.core.kb.ChatContext
 import com.jev.probe.core.kb.ContextBuilder
 import com.jev.probe.core.kb.KbStore
 import com.jev.probe.jev.JevClient
+import com.jev.probe.jev.ExplanationFormat
 import com.jev.probe.jev.VisionClient
 import com.jev.probe.overlay.OverlayController
 import java.util.concurrent.Executors
@@ -116,9 +122,12 @@ open class ChatCaptureService : AccessibilityService() {
     }
     private val ocr = MlKitOcr()
     private var ocrBusy = false
+    private var externalCaptureId: String? = null
+    private var manualContentFingerprint: String? = null
     private var lastAnalysis: com.jev.probe.core.Analysis? = null
     private var lastAnalyzedSnapshot: ChatSnapshot? = null
     private var lastContext: ChatContext? = null
+    private var explanationGeneration = 0
 
     /** What the screen looked like the last time we fired an automatic shot.
      *  See [ocrSignature]: this is the brake on the OCR path. */
@@ -136,39 +145,16 @@ open class ChatCaptureService : AccessibilityService() {
             if (!enabled) overlay?.hide() else maybeCapture()
         }
         overlay?.onManualAnalyze = {
-            if (!session.reviewPending) currentSnapshot?.let {
-                reviewSnapshot(it, activePkg ?: foregroundPkg ?: "")
+            if (!session.reviewPending) {
+                val pkg = rootInActiveWindow?.packageName?.toString() ?: foregroundPkg ?: ""
+                val snapshot = currentSnapshot
+                // Generic OCR must read the current screen again on every manual tap.
+                if (pkg !in adapters || snapshot == null) ocrCaptureManual()
+                else reviewSnapshot(snapshot, pkg)
             }
         }
-        overlay?.onDetails = {
-            val snapshot = lastAnalyzedSnapshot
-            val analysis = lastAnalysis
-            val ctx = lastContext
-            val token = session.current
-            val pkg = activePkg ?: foregroundPkg ?: ""
-            if (snapshot == null || analysis == null || !snapshotIsCurrent(snapshot, pkg)) {
-                overlay?.toast("请先核对并分析当前会话")
-            } else submit(token) {
-                val result = try { JevClient(prefs).details(snapshot, prefs.relationship, analysis, ctx) }
-                             catch (_: Exception) { "详细分析暂不可用，请检查回复模型后重试。" }
-                main.post { if (session.isCurrent(token) && snapshotIsCurrent(snapshot, pkg)) overlay?.showDetails(result) }
-            }
-        }
-        overlay?.onExplain = { candidate ->
-            val snapshot = lastAnalyzedSnapshot
-            val analysis = lastAnalysis
-            val ctx = lastContext
-            val token = session.current
-            val pkg = activePkg ?: foregroundPkg ?: ""
-            if (snapshot == null || analysis == null ||
-                analysis.rankedReplies.none { it.text == candidate } || !snapshotIsCurrent(snapshot, pkg)) {
-                overlay?.toast("请先分析当前会话")
-            } else submit(token) {
-                val result = try { JevClient(prefs).explain(snapshot, prefs.relationship, analysis, candidate, ctx) }
-                             catch (_: Exception) { "理由与代价暂不可用，请检查回复模型后重试。" }
-                main.post { if (session.isCurrent(token) && snapshotIsCurrent(snapshot, pkg)) overlay?.showDetails(result, "回复理由与代价") }
-            }
-        }
+        overlay?.onDetails = { requestExplanation() }
+        overlay?.onExplain = { candidate -> requestExplanation(candidate) }
         overlay?.onRewrite = {
             val snapshot = lastAnalyzedSnapshot
             val analysis = lastAnalysis
@@ -233,7 +219,31 @@ open class ChatCaptureService : AccessibilityService() {
         if (!prefs.enabled) { session.setEnabled(false); overlay?.hide(); return }
         session.setEnabled(true)
 
+        // Permission-window focus are expected during an explicit
+        // capture. The handoff checks the original app AND content before use.
+        if (externalCaptureId != null) return
         val type = event.eventType
+        // A manual OCR round also becomes stale while its review editor owns
+        // focus. Changes from the captured app must cancel it; edits in our
+        // overlay have our own package and must keep the review intact.
+        val capturedPkg = activePkg
+        if (capturedPkg != null && capturedPkg !in adapters &&
+            event.packageName?.toString() == capturedPkg &&
+            (type == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED ||
+                type == AccessibilityEvent.TYPE_VIEW_SCROLLED) &&
+            (currentSnapshot != null || ocrBusy)) {
+            // Returning from consent can redraw/recreate an unchanged chat.
+            // Cancel on a real content change, not every accessibility event.
+            val live = rootInActiveWindow?.takeIf { it.packageName?.toString() == capturedPkg }
+                ?: windows.asSequence().mapNotNull { it.root }
+                    .firstOrNull { it.packageName?.toString() == capturedPkg }
+            if (live != null && manualContentFingerprint != null &&
+                contentFingerprint(live) == manualContentFingerprint) return
+            cancelWork()
+            foregroundPkg = capturedPkg
+            overlay?.showIdle(null)
+            return
+        }
         // showReview() makes the overlay focusable so its EditText can be
         // corrected. That focus transition emits accessibility window events,
         // while rootInActiveWindow may report either our overlay or the chat app
@@ -256,14 +266,16 @@ open class ChatCaptureService : AccessibilityService() {
         if (type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             val fg = rootInActiveWindow?.packageName?.toString()
             if (fg != null && fg !in adapters) {
-                if (fg != activePkg) cancelWork()
+                val changed = fg != activePkg
+                if (changed) cancelWork()
                 foregroundPkg = fg
                 val drop = fg == packageName ||
                     fg == WECHAT_PACKAGE ||
                     fg.contains("launcher", ignoreCase = true) ||
                     fg == "com.miui.home" ||
                     fg == "com.android.systemui"
-                if (drop) overlay?.hide() else overlay?.showIdle(null)
+                if (drop) overlay?.hide()
+                else if (changed || overlay?.isShowing() != true) overlay?.showIdle(null)
                 return
             }
         }
@@ -276,12 +288,23 @@ open class ChatCaptureService : AccessibilityService() {
     }
 
     private fun maybeCapture() {
-        if (!session.current.isActive() || session.reviewPending) return
+        if (!session.current.isActive() || session.reviewPending || externalCaptureId != null) return
         val root = rootInActiveWindow ?: return
         val pkg = root.packageName?.toString()
         // Apps with no adapter are never handled automatically (v1.3 revision):
         // the only way in for them is the bubble menu's "截屏识别一次".
-        val adapter = adapters[pkg] ?: return
+        val adapter = adapters[pkg]
+        if (adapter == null) {
+            // Rebinding the service can miss the chat's WINDOW_STATE_CHANGED.
+            // Keep the explicit screenshot menu available without capturing.
+            if (pkg != null && pkg != packageName && pkg != WECHAT_PACKAGE &&
+                pkg != "com.android.systemui" && pkg != "com.miui.home" &&
+                !pkg.contains("launcher", ignoreCase = true)) {
+                foregroundPkg = pkg
+                if (overlay?.isShowing() != true) overlay?.showIdle(null)
+            }
+            return
+        }
         // Only act inside a chat window (the adapter returns null elsewhere).
         val rawSnapshot = adapter.extract(root, resources) ?: return
         // Stabilize the title BEFORE anything below reads it: some apps (X) show
@@ -370,6 +393,7 @@ open class ChatCaptureService : AccessibilityService() {
 
     /** Invalidate every callback before clearing UI state or starting another round. */
     private fun cancelWork() {
+        explanationGeneration++
         session.reset()
         main.removeCallbacksAndMessages(null)
         pendingSnapshot = null
@@ -378,10 +402,58 @@ open class ChatCaptureService : AccessibilityService() {
         lastSignature = ""
         lastOcrSignature = ""
         ocrBusy = false
+        manualContentFingerprint = null
         lastAnalysis = null
         lastAnalyzedSnapshot = null
         lastContext = null
         overlay?.resetForNewConversation()
+    }
+
+    private fun requestExplanation(candidate: String? = null) {
+        val snapshot = lastAnalyzedSnapshot
+        val analysis = lastAnalysis
+        val ctx = lastContext
+        val token = session.current
+        val pkg = activePkg ?: foregroundPkg ?: ""
+        if (snapshot == null || analysis == null || !snapshotIsCurrent(snapshot, pkg) ||
+            (candidate != null && analysis.rankedReplies.none { it.text == candidate })) {
+            overlay?.toast("请先核对并分析当前会话")
+            return
+        }
+        val heading = if (candidate == null) "详细分析" else "回复理由与代价"
+        val generation = ++explanationGeneration
+        val requestToken = WorkToken { session.isCurrent(token) }
+        val detach = token.onCancel { requestToken.cancel() }
+        val back = {
+            explanationGeneration++
+            requestToken.cancel()
+            if (session.isCurrent(token) && snapshotIsCurrent(snapshot, pkg)) overlay?.showCandidateReplies()
+            Unit
+        }
+        overlay?.showExplanationLoading(heading, back)
+        submit(token) {
+            try {
+                val result = WorkScope.run(requestToken) {
+                    val client = JevClient(prefs)
+                    if (candidate == null) client.details(snapshot, prefs.relationship, analysis, ctx)
+                    else client.explain(snapshot, prefs.relationship, analysis, candidate, ctx)
+                }
+                main.post {
+                    if (generation == explanationGeneration && session.isCurrent(token) && snapshotIsCurrent(snapshot, pkg))
+                        overlay?.showDetails(result, heading)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                val message = ExplanationFormat.failureMessage(heading, e)
+                main.post {
+                    if (generation == explanationGeneration && session.isCurrent(token) && snapshotIsCurrent(snapshot, pkg))
+                        overlay?.showExplanationError(heading, message, { requestExplanation(candidate) }, back)
+                }
+            } finally {
+                detach()
+            }
+        }
     }
 
     private fun runAnalysis(token: WorkToken = session.current) {
@@ -459,10 +531,15 @@ open class ChatCaptureService : AccessibilityService() {
      * spacing. Nobody can tell who said what this way, so everything is filed as
      * the other person and the panel says so.
      */
-    private fun ocrCaptureManual() {
+    private fun ocrCaptureManual(mode: String = prefs.captureMethod) {
         if (!session.current.isActive()) return
-        val root = rootInActiveWindow
+        val root = rootInActiveWindow?.takeIf { it.packageName?.toString() != packageName }
+            ?: windows.asSequence().filter { it.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_APPLICATION }
+                .mapNotNull { it.root }.firstOrNull { it.packageName?.toString() != packageName }
         val pkg = root?.packageName?.toString() ?: foregroundPkg ?: activePkg ?: ""
+        if (pkg.isBlank() || pkg == packageName) {
+            overlay?.toast("请先切到要识别的聊天应用"); return
+        }
         if (pkg == WECHAT_PACKAGE) {
             overlay?.toast("当前 Android 版无法截取微信聊天画面，暂不支持微信")
             return
@@ -473,7 +550,85 @@ open class ChatCaptureService : AccessibilityService() {
         }
         cancelWork()
         activePkg = pkg
-        ocrCapture(title, emptyList(), pkg, manual = true)
+        foregroundPkg = pkg
+        manualContentFingerprint = root?.let { contentFingerprint(it) }
+        if (mode == Prefs.CAPTURE_SYSTEM) externalCapture(title, pkg, root)
+        else ocrCapture(title, emptyList(), pkg, manual = true)
+    }
+
+    private fun contentFingerprint(root: AccessibilityNodeInfo): String {
+        // The consent activity can recreate the chat window after an orientation change,
+        // and an overlay can change node visibility without changing the chat.
+        // Compare semantic content, not those transient window properties.
+        val text = StringBuilder()
+        val stack = ArrayDeque<AccessibilityNodeInfo>().apply { add(root) }
+        var count = 0
+        while (stack.isNotEmpty() && count++ < 4000) {
+            val node = stack.removeLast()
+            if (!node.isPassword) {
+                text.append(node.viewIdResourceName).append(':').append(node.text)
+                    .append(':').append(node.contentDescription).append('\n')
+            }
+            for (i in 0 until node.childCount) node.getChild(i)?.let { stack.add(it) }
+        }
+        return java.security.MessageDigest.getInstance("SHA-256")
+            .digest(text.toString().toByteArray()).joinToString("") { "%02x".format(it) }
+    }
+
+    private fun externalCapture(title: String?, pkg: String, root: AccessibilityNodeInfo?) {
+        val token = session.current
+        if (!token.isActive() || root == null) return
+        var fingerprint = ""
+        ocrBusy = true
+        var id = ""
+        var detach: () -> Unit = {}
+        val request = CaptureHandoff.Request(
+            isActive = { session.isCurrent(token) },
+            readiness = {
+                val live = rootInActiveWindow
+                val livePkg = live?.packageName?.toString()
+                captureReadiness(livePkg, packageName, pkg,
+                    live != null && livePkg == pkg && contentFingerprint(live) == fingerprint)
+            },
+            setHidden = { overlay?.setHiddenForShot(it) },
+            onResult = { result ->
+                detach()
+                if (externalCaptureId == id) externalCaptureId = null
+                if (!session.isCurrent(token)) {
+                    if (result is ScreenCapture.Result.Ok) result.bitmap.recycle()
+                } else when (result) {
+                    is ScreenCapture.Result.Failed -> {
+                        ocrBusy = false
+                        showCaptureFallback(result.humanMessage)
+                    }
+                    is ScreenCapture.Result.Ok -> acceptCapturedBitmap(result, title, emptyList(), pkg,
+                        manual = true, token = token)
+                }
+            })
+        id = CaptureHandoff.register(request)
+        externalCaptureId = id
+        detach = token.onCancel { CaptureHandoff.cancel(id) }
+        overlay?.setHiddenForShot(true)
+        // Let the original application become active before opening the consent activity.
+        main.postDelayed({
+            if (CaptureHandoff.get(id) == null) return@postDelayed
+            val live = rootInActiveWindow
+            if (live?.packageName?.toString() != pkg) {
+                CaptureHandoff.complete(id, ScreenCapture.Result.Failed(-10, "请返回目标聊天后重试"))
+                return@postDelayed
+            }
+            fingerprint = contentFingerprint(live)
+            manualContentFingerprint = fingerprint
+            runCatching {
+                startActivity(Intent(this, CaptureInputActivity::class.java)
+                    .putExtra(CaptureInputActivity.EXTRA_REQUEST, id)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK))
+            }.onFailure { CaptureHandoff.complete(id, ScreenCapture.Result.Failed(-10, "无法打开截屏入口，请重试")) }
+        }, 220)
+    }
+
+    private fun showCaptureFallback(message: String) {
+        overlay?.showCaptureFallback(message, onRetry = { ocrCaptureManual() })
     }
 
     /**
@@ -518,35 +673,34 @@ open class ChatCaptureService : AccessibilityService() {
                     // Throttle/interval codes are transient timing, not something
                     // the user can act on — nagging about them would be constant.
                     val transient = res.code == ScreenCapture.CODE_THROTTLED || res.code == 3
-                    if (manual || !transient) overlay?.showError(res.humanMessage)
+                    if (manual && res.code != 6 && !transient) showCaptureFallback(res.humanMessage)
+                    else if (manual || !transient) overlay?.showError(res.humanMessage)
                 }
-                is ScreenCapture.Result.Ok -> {
-                    if (prefs.ocrEngine == Prefs.OCR_VISION) {
-                        ocrCloud(res.bitmap, treeTitle, pkg, manual, token)
-                        return@capture
-                    }
-                    ocr.scaleX = res.scaleX; ocr.scaleY = res.scaleY
-                    ocr.originX = res.originX; ocr.originY = res.originY
-                    if (rects.isNotEmpty() && !manual) {
-                        // Re-measure inside the callback. The rects handed in were
-                        // read before the 120ms overlay-hide wait and the shot
-                        // itself; one scroll tick in between and we would crop the
-                        // rows next to the ones in the picture. Fall back to the
-                        // old rects only if the tree gives us nothing now.
-                        val fresh = rootInActiveWindow?.let { collectFeishuBubbleRects(it, resources) }
-                        ocrByRects(res.bitmap, if (fresh.isNullOrEmpty()) rects else fresh, treeTitle, pkg, token)
-                    } else ocrWholeScreen(res.bitmap, treeTitle, pkg, manual, token)
-                }
+                is ScreenCapture.Result.Ok -> acceptCapturedBitmap(res, treeTitle, rects, pkg, manual, token)
             }
         }
     }
 
+    private fun acceptCapturedBitmap(res: ScreenCapture.Result.Ok, title: String?, rects: List<BubbleRect>,
+                                     pkg: String, manual: Boolean, token: WorkToken, cropChatArea: Boolean = true) {
+        if (prefs.ocrEngine == Prefs.OCR_VISION) {
+            ocrCloud(res.bitmap, title, pkg, manual, token, cropChatArea)
+            return
+        }
+        ocr.scaleX = res.scaleX; ocr.scaleY = res.scaleY
+        ocr.originX = res.originX; ocr.originY = res.originY
+        if (rects.isNotEmpty() && !manual) {
+            val fresh = rootInActiveWindow?.let { collectFeishuBubbleRects(it, resources) }
+            ocrByRects(res.bitmap, if (fresh.isNullOrEmpty()) rects else fresh, title, pkg, token)
+        } else ocrWholeScreen(res.bitmap, title, pkg, manual, token, cropChatArea)
+    }
+
     /** One cropped image per round, rather than a paid request for every bubble. */
-    private fun ocrCloud(bmp: Bitmap, title: String?, pkg: String, manual: Boolean, token: WorkToken) {
-        val top = (bmp.height * TOP_CROP).toInt().coerceIn(0, bmp.height - 1)
-        val bottom = (bmp.height * BOTTOM_CROP).toInt().coerceIn(top + 1, bmp.height)
+    private fun ocrCloud(bmp: Bitmap, title: String?, pkg: String, manual: Boolean, token: WorkToken, cropChatArea: Boolean = true) {
+        val top = if (cropChatArea) (bmp.height * TOP_CROP).toInt().coerceIn(0, bmp.height - 1) else 0
+        val bottom = if (cropChatArea) (bmp.height * BOTTOM_CROP).toInt().coerceIn(top + 1, bmp.height) else bmp.height
         val crop = Bitmap.createBitmap(bmp, 0, top, bmp.width, bottom - top)
-        runCatching { bmp.recycle() }
+        if (crop !== bmp) runCatching { bmp.recycle() }
         val detachCrop = token.onCancel { runCatching { crop.recycle() } }
         if (!VisionClient.supportsVision(prefs.visionBaseUrl) || prefs.effectiveVisionKey().isBlank()) {
             runCatching { crop.recycle() }
@@ -607,8 +761,9 @@ open class ChatCaptureService : AccessibilityService() {
     }
 
     /** Whole screen minus the top bar and the input area, grouped by line gaps. */
-    private fun ocrWholeScreen(bmp: Bitmap, treeTitle: String?, pkg: String, manual: Boolean, token: WorkToken) {
-        val region = Rect(0, (bmp.height * TOP_CROP).toInt(), bmp.width, (bmp.height * BOTTOM_CROP).toInt())
+    private fun ocrWholeScreen(bmp: Bitmap, treeTitle: String?, pkg: String, manual: Boolean, token: WorkToken, cropChatArea: Boolean = true) {
+        val region = if (cropChatArea) Rect(0, (bmp.height * TOP_CROP).toInt(), bmp.width, (bmp.height * BOTTOM_CROP).toInt())
+            else Rect(0, 0, bmp.width, bmp.height)
         ocr.recognize(bmp, region) { lines ->
             runCatching { bmp.recycle() }
             val msgs = groupOcrLines(lines)

@@ -1,3 +1,8 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <style name="Theme.JevProbe" parent="Theme.MaterialComponents.DayNight.NoActionBar" />
+    <style name="Theme.JevProbe.Capture" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowDisablePreview">true</item>
+    </style>
 </resources>

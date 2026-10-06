@@ -8,6 +8,8 @@
 
 如果这套聊天副驾对你有用，可以给[项目点一个 Star](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/stargazers)，方便以后找到，也让更多有相同需求的人看到它。
 
+**感谢 PR 贡献者 [@RayWangQvQ（在7楼）](https://github.com/RayWangQvQ)**：通过 [PR #1](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/pull/1) 修复安卓通用截图流程中的核对页消失和确认循环，并补充焦点恢复测试。他在 PR 中报告了 Soul 真机验证，详细署名见文末「贡献者与致谢」。
+
 ## 安卓图文教程：DeepSeek 配置与 Soul 使用
 
 [打开完整教程](documentation/guides/android-deepseek/README.md)：附 **10 张实际页面截图**，从 DeepSeek 开放平台充值、创建和复制 API Key，讲到 Android 安装权限、识图、策略判断、回复生成，以及 Soul 手动截屏后的核对和复制回复。
@@ -16,14 +18,24 @@
 
 Soul 使用通用手动截图路径：打开聊天 → 长按军师悬浮球 → 截屏识别一次 → 核对原文并确认分析 → 复制候选后手动粘贴发送。不同手机和应用版本仍需验证；**当前安卓版暂不支持微信**。
 
-教程截图包含本地更新版界面；合并后的配置页和新增「系统截屏」选项尚未进入公开的 `v0.1.7-preview` 下载包。旧包的「判断接口（Jev）」在选择 DeepSeek 策略后可以留空，截图与下载包的差异已在教程中说明。
+**请下载 `v0.1.8-preview` 或更新版本。** 教程中的合并配置页和「系统截屏」选项已包含在新版 APK 中；`v0.1.7-preview` 没有这两项更新。
 
 <p>
   <img src="documentation/guides/android-deepseek/images/02-DeepSeek判断与回复.png" width="320" alt="安卓版的 DeepSeek 策略判断与回复配置，密钥已隐藏">
   <img src="documentation/guides/android-deepseek/images/04-识图开关与截屏方式.png" width="320" alt="本地更新版的视觉模型识图与截屏方式设置">
 </p>
 
-## 最近更新：Android 核对、取消任务与 DeepSeek 上下文
+## 最新版本：v0.1.8-preview
+
+- 修复「详细分析」和「为什么这样回」对 JSON 代码块的解析，点击后显示加载状态；失败时显示错误原因，可重试或返回候选。详情使用回复接口，不需要额外配置。
+- 策略判断配置合并为一个区域：选择 Jev 或 DeepSeek 后只显示相应接口字段，原有保存设置继续适用。
+- 在「设置 → 分析 → 手动截屏方式」选择无障碍截屏或系统截屏；长按悬浮球统一使用「截屏识别一次」。系统截屏每轮需 Android 授权。
+- 检测全黑或不完整的截屏并提示重试，不把黑图交给 OCR；部分模拟器仍可能返回黑图或裁切，微信仍不支持。
+- 最新 Android 单元测试 **50 项通过**，调试 APK 构建通过。Windows 与 Mac 同期重新打包，其采集和分析逻辑本轮未修改；手机上的完整模型请求仍需实际验收。
+
+新版下载及校验文件见 [GitHub Releases](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/releases/latest)。旧调试 APK 若签名不同，无法直接覆盖安装；先记下配置，再卸载旧包，卸载会清除本地数据。
+
+## 此前更新：Android 核对、取消任务与 DeepSeek 上下文
 
 2026 年 10 月 6 日，Android 修复了以下使用问题：
 
@@ -42,7 +54,7 @@ Soul 使用通用手动截图路径：打开聊天 → 长按军师悬浮球 →
 
 [合并后的 main 构建](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/actions/runs/37172091002)已通过 Android 单元测试与 APK 构建，以及 Mac、Windows 构建；本轮未做 Android 真机验收。
 
-**本次打包版本：`v0.1.7-preview`。** Android APK 包含上述修复；Windows 预览 ZIP 与 Mac 源码 ZIP 同步重新打包，这轮未修改其采集和分析逻辑。请从 [GitHub Releases 下载页](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/releases/latest)下载对应文件，按同页 `SHA256SUMS.txt` 校验。`v0.1.6-preview` 包含 PR #1，尚未包含这轮修复。Android 的安装、DeepSeek 配置与通用截屏入口见 [Android 使用说明](integrations/jev_android/README.md)。
+**上述修复已包含在 `v0.1.7-preview` 和最新 `v0.1.8-preview` 中。** Windows 预览 ZIP 与 Mac 源码 ZIP 同期重新打包，其采集和分析逻辑未修改。请从 [GitHub Releases 下载页](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/releases/latest)下载对应文件，按同页 `SHA256SUMS.txt` 校验。`v0.1.6-preview` 包含 PR #1，尚未包含这轮修复。Android 的安装、DeepSeek 配置与通用截屏入口见 [Android 使用说明](integrations/jev_android/README.md)。
 
 Android 仍处于预览阶段，微信仍不支持。自动测试覆盖上述逻辑；悬浮窗焦点、不同设备的截图能力和实际模型兼容性仍需真机验收。已发送给模型的请求无法撤回；停用后会取消后续步骤并丢弃旧结果。
 
