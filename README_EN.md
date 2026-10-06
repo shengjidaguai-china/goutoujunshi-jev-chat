@@ -8,6 +8,21 @@
 
 If it helps you, [Star the project](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/stargazers) so you can find it again and help others discover it.
 
+## Illustrated Android guide: DeepSeek setup and Soul
+
+[Read the complete guide](documentation/guides/android-deepseek/README.md) (Chinese), with **10 actual page screenshots** covering DeepSeek API top-ups, key creation and copying, Android installation and permissions, image recognition, strategy judgment, reply drafts, and the manual screenshot/review workflow in Soul.
+
+For a DeepSeek-only setup, select **DeepSeek official** for strategy judgment and replies, and **DeepSeek** for the vision endpoint. Use `deepseek-flash` and `https://api.deepseek.com/v1`; the three key fields can use the same key from your account. Select the vision-model option for screenshot recognition, then save all settings.
+
+Soul uses the generic manual screenshot path: open a chat, long-press the assistant bubble, recognize one screenshot, review and confirm the transcript, then copy a candidate and paste/send it yourself. Device and app versions still require validation. **The current Android preview does not support WeChat.**
+
+The tutorial includes screenshots of the local updated build. The combined configuration card and new system-capture option are not included in the public `v0.1.7-preview` package. In that package, the separate Jev endpoint card can be left blank when DeepSeek strategy judgment is selected. The guide explains these differences.
+
+<p>
+  <img src="documentation/guides/android-deepseek/images/02-DeepSeek判断与回复.png" width="320" alt="Android DeepSeek strategy and reply settings, with keys hidden">
+  <img src="documentation/guides/android-deepseek/images/04-识图开关与截屏方式.png" width="320" alt="Vision recognition and capture settings in the local updated build">
+</p>
+
 ## Latest update: Android review, cancellation, and DeepSeek context
 
 On October 6, 2026, the Android implementation was updated:
@@ -137,3 +152,9 @@ python3 -B -m unittest discover -s tests -q
 These are **preview builds**. Live WeChat capture, model requests, and Accessibility filling on Mac were not repeated in this offline check. Windows still needs device-level checks of capture, overlay, and filling against actual chat app versions. Android's non-WeChat chat-app paths also need device validation; this build disables the WeChat capture entry point. An incomplete Jev judgment stops reply drafting. Windows filling uses window coordinates: it checks the current chat and foreground window, but cannot read back the input control. Copy and paste manually when the target is uncertain. Cloud image recognition and analysis send relevant content to the configured services. See the [data-use notice](PRIVACY.md).
 
 The repository bundles Goutoujunshi's behavior rules and selected knowledge. Its original code uses the [MIT License](LICENSE). Mac window modules are adapted from [jev-chat-jarvis-mac](https://github.com/jev-chat/jev-chat-jarvis-mac), with its MIT notice in [vendor/LICENSE](integrations/jev_mac/vendor/LICENSE). Android sources come from [Jev Android](https://github.com/jev-chat/jev-chat-jarvis), and Windows sources from [Jev Windows](https://github.com/jev-chat/jev-chat-windows); both retain their LICENSE and NOTICE in their directories. See the [Windows NOTICE](integrations/jev_windows/NOTICE) for the PySide6-Fluent-Widgets distribution license.
+
+## Contributors and acknowledgments
+
+Thanks to [@RayWangQvQ](https://github.com/RayWangQvQ) (在7楼) for [PR #1](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/pull/1), fixing transcript review disappearing or looping after confirmation in Android's generic screenshot OCR flow. The contribution includes unit tests for review state, focus restoration, and app switching. It was merged on October 4, 2026; the contributor reported device validation in a Soul chat in the PR.
+
+This project combines Goutoujunshi with the chat-assistant approach in [jev-chat-jarvis](https://github.com/jev-chat/jev-chat-jarvis). Thanks to the Jev project and its contributors for the underlying implementations. Platform origins and licenses are described above.

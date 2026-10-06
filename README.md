@@ -8,6 +8,21 @@
 
 如果这套聊天副驾对你有用，可以给[项目点一个 Star](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/stargazers)，方便以后找到，也让更多有相同需求的人看到它。
 
+## 安卓图文教程：DeepSeek 配置与 Soul 使用
+
+[打开完整教程](documentation/guides/android-deepseek/README.md)：附 **10 张实际页面截图**，从 DeepSeek 开放平台充值、创建和复制 API Key，讲到 Android 安装权限、识图、策略判断、回复生成，以及 Soul 手动截屏后的核对和复制回复。
+
+只用 DeepSeek 时，「策略判断」和「回复接口」选 **DeepSeek 官方**，「视觉接口」选 **DeepSeek**，模型填 `deepseek-flash`，接口地址为 `https://api.deepseek.com/v1`；三个密钥框可填写同一个自己的 Key。再将「截图识图方式」选为「视觉模型（DeepSeek 等）」，点击「保存全部设置」。
+
+Soul 使用通用手动截图路径：打开聊天 → 长按军师悬浮球 → 截屏识别一次 → 核对原文并确认分析 → 复制候选后手动粘贴发送。不同手机和应用版本仍需验证；**当前安卓版暂不支持微信**。
+
+教程截图包含本地更新版界面；合并后的配置页和新增「系统截屏」选项尚未进入公开的 `v0.1.7-preview` 下载包。旧包的「判断接口（Jev）」在选择 DeepSeek 策略后可以留空，截图与下载包的差异已在教程中说明。
+
+<p>
+  <img src="documentation/guides/android-deepseek/images/02-DeepSeek判断与回复.png" width="320" alt="安卓版的 DeepSeek 策略判断与回复配置，密钥已隐藏">
+  <img src="documentation/guides/android-deepseek/images/04-识图开关与截屏方式.png" width="320" alt="本地更新版的视觉模型识图与截屏方式设置">
+</p>
+
 ## 最近更新：Android 核对、取消任务与 DeepSeek 上下文
 
 2026 年 10 月 6 日，Android 修复了以下使用问题：
@@ -139,8 +154,11 @@ python3 -B -m unittest discover -s tests -q
 
 仓库主体采用 [MIT 许可证](LICENSE)。Mac 窗口模块参考 [jev-chat-jarvis-mac](https://github.com/jev-chat/jev-chat-jarvis-mac)，保留其 [MIT 说明](integrations/jev_mac/vendor/LICENSE)；Android 与 Windows 分别参考 [Jev Android](https://github.com/jev-chat/jev-chat-jarvis) 和 [Jev Windows](https://github.com/jev-chat/jev-chat-windows)，第三方分发注意事项见 [Windows NOTICE](integrations/jev_windows/NOTICE)。
 
-这里非常感谢 jev-chat-jarvis项目，<br>
-从该项目得到启发，结合goutoujunshi而来。
+## 贡献者与致谢
+
+感谢 [@RayWangQvQ](https://github.com/RayWangQvQ)（在7楼）提交 [PR #1](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/pull/1)，修复 Android 通用截图 OCR 中原文核对页消失、确认后循环返回的问题，并补充核对状态、焦点恢复和应用切换的单元测试。该 PR 已于 2026 年 10 月 4 日合并；贡献者在 PR 中报告已在 Soul 聊天页面完成真机验证。
+
+本项目由狗头军师与 [jev-chat-jarvis](https://github.com/jev-chat/jev-chat-jarvis) 的聊天助手思路融合而来，感谢 Jev 项目及其贡献者提供的基础实现。各平台来源与许可证见上文说明。
 
 联系我加入升级打怪开源群：
 Email：247133278@qq.com<br>
