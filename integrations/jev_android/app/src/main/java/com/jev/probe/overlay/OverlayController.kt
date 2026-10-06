@@ -81,6 +81,7 @@ class OverlayController(private val ctx: Context) {
      *  can say so instead of silently showing "（未生成候选回复）". */
     private var replyError: String? = null
     private var reviewCancel: (() -> Unit)? = null
+    var onHidden: (() -> Unit)? = null
 
     private fun dp(v: Int) = TypedValue.applyDimension(
         TypedValue.COMPLEX_UNIT_DIP, v.toFloat(), ctx.resources.displayMetrics).roundToInt()
@@ -343,7 +344,7 @@ class OverlayController(private val ctx: Context) {
             if (messages.size != lines.size || messages.isEmpty() || messages.any { it.text.isBlank() }) {
                 toast("每行请以“我：”或“对方：”开头，并核对内容")
             } else {
-                reviewCancel = null
+                // Keep cancellation while focus is returning to the chat window.
                 lp?.let { params ->
                     params.flags = params.flags or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
                     root?.let { runCatching { wm.updateViewLayout(it, params) } }
@@ -371,6 +372,11 @@ class OverlayController(private val ctx: Context) {
      * could fill the wrong chat's input box.
      */
     fun resetForNewConversation() {
+        reviewCancel = null
+        lp?.let { params ->
+            params.flags = params.flags or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+            root?.let { runCatching { wm.updateViewLayout(it, params) } }
+        }
         lastJudgment = null
         lastFill = null
         noteText = null
@@ -378,6 +384,8 @@ class OverlayController(private val ctx: Context) {
         replyError = null
         contentBox?.removeAllViews()
     }
+
+    fun finishReview() { reviewCancel = null }
 
     private fun bigButton(label: String, onClick: () -> Unit) = TextView(ctx).apply {
         text = label; textSize = 14f; gravity = Gravity.CENTER
@@ -451,9 +459,12 @@ class OverlayController(private val ctx: Context) {
     fun toast(msg: String) = Toast.makeText(ctx, msg, Toast.LENGTH_SHORT).show()
 
     fun hide() {
-        val r = root ?: return
-        runCatching { wm.removeView(r) }
+        // Do not invoke the collapse callback here: it would recreate the idle overlay.
+        reviewCancel = null
+        root?.let { r -> runCatching { wm.removeView(r) } }
         root = null; bubble = null; panel = null; contentBox = null; dangerDot = null; expanded = false
+        resetForNewConversation()
+        onHidden?.invoke()
     }
 
     // --------------------------------------------------------------- rendering
@@ -514,7 +525,7 @@ class OverlayController(private val ctx: Context) {
                 "仅凭屏幕片段无法确认对方内心、完整上下文和线下情况。" })))
             val boundary = GoutouGuidance.explicitBoundary(snap)
             views.add(line("军师建议 · " + (if (boundary) "尊重停止联系要求" else
-                (ACTION[a.bestAction?.choice] ?: "先核对原文")), "#2B5245", 13f, true))
+                GoutouGuidance.actionLabel(a.bestAction?.choice)), "#2B5245", 13f, true))
             views.add(hint("下一步 · " + (if (boundary) "先停止联系，等对方主动重启对话。" else
                 GoutouGuidance.nextStep(a.bestAction?.choice))))
             views.add(hint("停止条件 · ${GoutouGuidance.stopCondition}"))

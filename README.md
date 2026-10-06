@@ -1,4 +1,4 @@
-<!-- README_SYNC: source=working-tree; updated=2026-10-04 -->
+<!-- README_SYNC: source=working-tree; updated=2026-10-06 -->
 
 <p align="center">简体中文 · <a href="./README_EN.md">English</a></p>
 
@@ -8,7 +8,16 @@
 
 如果这套聊天副驾对你有用，可以给[项目点一个 Star](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/stargazers)，方便以后找到，也让更多有相同需求的人看到它。
 
-## 最近更新：Android 原文核对流程
+## 最近更新：Android 核对、取消任务与 DeepSeek 上下文
+
+2026 年 10 月 6 日，Android 修复了以下使用问题：
+
+- 隐藏核对页、停用助手或切换会话时取消旧任务，清除核对状态，阻止旧结果重新打开悬浮窗；运行中的 HTTP 连接会尝试断开。
+- DeepSeek 策略判断、标签轮换和候选排序都带上当前联系人的阶段、目标、背景及所选历史；详细分析和回复解释也使用当前背景。
+- 候选只接受完整 JSON 字符串数组；说明文字、错误对象和截断输出会显示错误提示。
+- 相同消息的不同联系人分别处理；OCR 自动分析关闭时，自动识别只亮悬浮球。手动「截屏识别一次」仍直接打开核对页，所有模型分析都需确认。
+- 补齐七种中文策略的下一步建议；自己的后续消息不会解除对方的停止联系要求，对方再次主动发消息后重新判断。
+- 策略连通测试读取设置页里刚填写的回复地址与密钥，无需先保存。新增取消任务、候选格式、上下文、会话身份和边界回归测试。
 
 2026 年 10 月 4 日，[PR #1](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/pull/1) 已合并到 `main`。本次修复针对 Soul 等通过手动截图识别的应用中，原文核对页消失或循环返回的问题：
 
@@ -18,9 +27,9 @@
 
 [合并后的 main 构建](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/actions/runs/37172091002)已通过 Android 单元测试与 APK 构建，以及 Mac、Windows 构建；本轮未做 Android 真机验收。
 
-**本次打包版本：`v0.1.6-preview`。** Android APK、Windows 预览 ZIP 与 Mac 源码 ZIP 均从包含本次合并的 `main` 重新构建。请从 [GitHub Releases 下载页](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/releases/latest)下载对应文件，按同页 `SHA256SUMS.txt` 校验。`v0.1.5-preview` 及更早版本尚未包含 PR #1。Android 的安装、DeepSeek 配置与通用截屏入口见 [Android 使用说明](integrations/jev_android/README.md)。
+**本次打包版本：`v0.1.7-preview`。** Android APK 包含上述修复；Windows 预览 ZIP 与 Mac 源码 ZIP 同步重新打包，这轮未修改其采集和分析逻辑。请从 [GitHub Releases 下载页](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/releases/latest)下载对应文件，按同页 `SHA256SUMS.txt` 校验。`v0.1.6-preview` 包含 PR #1，尚未包含这轮修复。Android 的安装、DeepSeek 配置与通用截屏入口见 [Android 使用说明](integrations/jev_android/README.md)。
 
-Android 仍处于预览阶段，微信仍不支持。核对中隐藏／停用助手、DeepSeek 判断的关系上下文、候选格式校验等问题仍待修复，详情见 Android 使用说明。本次合并覆盖原文核对页与焦点恢复的修复。
+Android 仍处于预览阶段，微信仍不支持。自动测试覆盖上述逻辑；悬浮窗焦点、不同设备的截图能力和实际模型兼容性仍需真机验收。已发送给模型的请求无法撤回；停用后会取消后续步骤并丢弃旧结果。
 
 ## Mac、Windows 与 Android 预览包
 

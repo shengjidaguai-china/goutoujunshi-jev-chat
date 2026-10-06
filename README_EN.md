@@ -1,4 +1,4 @@
-<!-- README_SYNC: source=working-tree; updated=2026-10-04 -->
+<!-- README_SYNC: source=working-tree; updated=2026-10-06 -->
 
 <p align="center"><a href="./README.md">简体中文</a> · English</p>
 
@@ -8,7 +8,16 @@
 
 If it helps you, [Star the project](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/stargazers) so you can find it again and help others discover it.
 
-## Latest update: Android transcript review
+## Latest update: Android review, cancellation, and DeepSeek context
+
+On October 6, 2026, the Android implementation was updated:
+
+- Hiding review, disabling the assistant, or changing chats cancels old work and clears review state. Stale results cannot reopen the overlay; active HTTP connections are disconnected where possible.
+- DeepSeek judgment, rotated-label checks, and candidate ranking receive the current contact's stage, goal, background, and selected history. Detailed analysis and reply explanations also receive the context.
+- Only complete JSON string arrays become candidates. Explanations, error objects, and truncated outputs produce an error message.
+- Identical messages in different contacts are handled separately. With OCR automatic analysis off, automatic recognition only lights the bubble. Manual screenshot recognition still opens review; analysis always requires confirmation.
+- All seven Chinese strategies have specific next-step advice. Your own replies no longer clear the other person's stop-contact request; a new message from that person allows reassessment.
+- The strategy connectivity test uses the reply address and key currently typed in the form, without requiring a save. Regression tests cover cancellation, candidate formats, context, chat identity, and boundaries.
 
 On October 4, 2026, [PR #1](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/pull/1) was merged into `main`. It addresses transcript review disappearing or looping in apps such as Soul that use manual screenshot recognition:
 
@@ -18,9 +27,9 @@ On October 4, 2026, [PR #1](https://github.com/shengjidaguai-china/goutoujunshi-
 
 The [post-merge main run](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/actions/runs/37172091002) passed Android unit tests and APK assembly, plus the Mac and Windows builds. Android device validation was not performed in this round.
 
-**Package version: `v0.1.6-preview`.** The Android APK, Windows preview ZIP, and Mac source ZIP are rebuilt from `main` with this merge included. Download the files from [GitHub Releases](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/releases/latest) and verify them against `SHA256SUMS.txt` on the release page. Version `v0.1.5-preview` and earlier do not include PR #1. See the [Android guide](integrations/jev_android/README.md) for installation, DeepSeek configuration, and manual screenshot recognition.
+**Package version: `v0.1.7-preview`.** The Android APK includes these fixes. Windows and Mac packages are rebuilt alongside it; their capture and analysis logic was not changed in this round. Download the files from [GitHub Releases](https://github.com/shengjidaguai-china/goutoujunshi-jev-chat/releases/latest) and verify them against `SHA256SUMS.txt` on the release page. Version `v0.1.6-preview` includes PR #1 but not these fixes. See the [Android guide](integrations/jev_android/README.md) for installation, DeepSeek configuration, and manual screenshot recognition.
 
-Android remains a preview, and WeChat remains unsupported. The Android guide also lists pending issues with hiding or disabling the assistant during review, relationship context in DeepSeek judgment, and candidate format validation. This merge covers transcript review and focus restoration only.
+Android remains a preview, and WeChat remains unsupported. Automated tests cover the updated logic; overlay focus, device capture support, and actual model compatibility still require device-level validation. Requests already sent to a provider cannot be recalled; disabling cancels subsequent steps and discards stale results.
 
 ## Mac, Windows, and Android preview packages
 

@@ -6,6 +6,8 @@ import java.io.InputStreamReader
 import java.io.OutputStream
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.concurrent.CancellationException
+import com.jev.probe.core.WorkScope
 
 /**
  * Which of the three API routes a failure came from. Used to build error text
@@ -57,7 +59,9 @@ object HttpJson {
         var attempt = 0
         var last: ApiException? = null
         while (attempt < MAX_ATTEMPTS) {
+            WorkScope.checkActive()
             var conn: HttpURLConnection? = null
+            var detach: (() -> Unit)? = null
             try {
                 conn = (URL(url).openConnection() as HttpURLConnection).apply {
                     requestMethod = "POST"
@@ -68,6 +72,9 @@ object HttpJson {
                     setRequestProperty("Content-Type", "application/json; charset=utf-8")
                     extraHeaders.forEach { (k, v) -> setRequestProperty(k, v) }
                 }
+                val connection = conn
+                detach = WorkScope.onCancel { connection.disconnect() }
+                WorkScope.checkActive()
                 val bytes = body.toString().toByteArray(Charsets.UTF_8)
                 conn.outputStream.use { os: OutputStream -> os.write(bytes) }
                 val code = conn.responseCode
@@ -87,18 +94,27 @@ object HttpJson {
                     throw ApiException(route, code, errText.ifBlank { "（响应体为空）" })
                 }
                 val text = readBody(conn.inputStream)
+                WorkScope.checkActive()
                 if (text.isBlank()) throw ApiException(route, code, "响应体为空")
                 return JSONObject(text)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: InterruptedException) {
+                Thread.currentThread().interrupt()
+                throw CancellationException("本轮任务已取消")
             } catch (e: ApiException) {
+                WorkScope.checkActive()
                 if (e.status != null && e.status in 400..499) throw e  // client error: no retry
                 last = e
                 attempt++
                 if (attempt < MAX_ATTEMPTS) Thread.sleep(500L * (1L shl attempt))
             } catch (e: Exception) {
+                WorkScope.checkActive()
                 last = ApiException(route, null, describe(e))
                 attempt++
                 if (attempt < MAX_ATTEMPTS) Thread.sleep(500L * (1L shl attempt))
             } finally {
+                detach?.invoke()
                 conn?.disconnect()
             }
         }

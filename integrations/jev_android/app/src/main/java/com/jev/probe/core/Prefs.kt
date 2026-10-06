@@ -73,9 +73,7 @@ class Prefs(context: Context, prefsName: String = PREFS_MAIN) {
         get() = sp.getString(K_STRATEGY_KEY, "") ?: ""
         set(v) = sp.edit().putString(K_STRATEGY_KEY, v.trim()).apply()
 
-    fun effectiveStrategyKey(): String = strategyKey.ifBlank {
-        if (replyBaseUrl.trim().trimEnd('/') == DEEPSEEK_BASE && replyKey.isNotBlank()) replyKey else ""
-    }
+    fun effectiveStrategyKey(): String = RouteKeys.strategy(strategyKey, replyKey, replyEndpoint())
 
     /** Back-compat alias so older call sites keep compiling. */
     var openRouterKey: String
@@ -173,6 +171,15 @@ class Prefs(context: Context, prefsName: String = PREFS_MAIN) {
     var enabled: Boolean
         get() = sp.getBoolean(K_ENABLED, false)
         set(v) = sp.edit().putBoolean(K_ENABLED, v).apply()
+
+    /** Retain this listener until the service is destroyed, even with no window events. */
+    fun observeEnabled(onChanged: (Boolean) -> Unit): () -> Unit {
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == K_ENABLED) onChanged(enabled)
+        }
+        sp.registerOnSharedPreferenceChangeListener(listener)
+        return { sp.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
 
     /**
      * Conversation whitelist: titles the assistant is allowed to act on. Empty

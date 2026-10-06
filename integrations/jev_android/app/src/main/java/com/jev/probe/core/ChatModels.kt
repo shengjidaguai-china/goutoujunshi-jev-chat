@@ -32,9 +32,11 @@ data class ChatSnapshot(
 ) {
     val latestFrom: String? get() = messages.lastOrNull()?.side
 
-    /** A stable signature of the last few messages, to detect real changes. */
+    /** Include identity and message boundaries so different chats never dedupe together. */
     fun signature(): String =
-        messages.takeLast(6).joinToString("|") { "${it.side}:${it.text}" }
+        "${title?.length ?: -1}:${title.orEmpty()}|" + messages.takeLast(6).joinToString("|") {
+            "${it.side.length}:${it.side}:${it.text.length}:${it.text}"
+        }
 }
 
 /** Jev's judgment result for one snapshot, plus the ranked candidate replies. */

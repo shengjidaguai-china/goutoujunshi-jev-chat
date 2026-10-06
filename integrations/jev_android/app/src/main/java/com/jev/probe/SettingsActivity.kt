@@ -24,6 +24,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.jev.probe.core.ChatSnapshot
 import com.jev.probe.core.Msg
 import com.jev.probe.core.Prefs
+import com.jev.probe.core.RouteKeys
 import com.jev.probe.core.kb.KbSelfCheck
 import com.jev.probe.core.kb.KbStore
 import com.jev.probe.jev.JudgeClient
@@ -90,9 +91,8 @@ class SettingsActivity : AppCompatActivity() {
         val strategyResult = resultText()
         strategyCard.addView(cardBtn("测试 DeepSeek 策略") {
             val model = strategyModelEdit.text.toString().trim()
-            val key = strategyKeyEdit.text.toString().trim().ifBlank {
-                if (prefs.replyBaseUrl.trimEnd('/') == Prefs.DEEPSEEK_BASE) prefs.replyKey else ""
-            }
+            val key = RouteKeys.strategy(strategyKeyEdit.text.toString().trim(),
+                replyKeyEdit.text.toString().trim(), replyBaseInput.text.toString().trim())
             if (model.isBlank() || key.isBlank()) {
                 strategyResult.text = "请填写 DeepSeek 策略模型和密钥"; return@cardBtn
             }
@@ -193,7 +193,7 @@ class SettingsActivity : AppCompatActivity() {
         replyCard.addView(cardTitle("回复接口"))
         replyCard.addView(text("生成 3 条候选回复。任何 OpenAI 兼容地址，填到 /v1 为止。", 12f, sub))
 
-        val replyBaseEdit = edit(prefs.replyBaseUrl, Prefs.DEFAULT_REPLY_BASE)
+        val replyBaseEdit = edit(prefs.replyBaseUrl, Prefs.DEFAULT_REPLY_BASE).also { replyBaseInput = it }
         val replyModelEdit = edit(prefs.replyModel, Prefs.DEFAULT_REPLY_MODEL)
         val replyIdx = when (prefs.replyBaseUrl.trim().trimEnd('/')) {
             Prefs.DEFAULT_REPLY_BASE -> 0
@@ -336,7 +336,7 @@ class SettingsActivity : AppCompatActivity() {
         card2.addView(text("可见聊天画面的文字可用本地 OCR 识别；当前 Android 预览版无法截取微信聊天画面，暂不支持微信。", 11f, sub))
         val ocrAutoRow = toggleRow("OCR 模式自动分析", prefs.ocrAutoAnalyze)
         card2.addView(ocrAutoRow)
-        card2.addView(text("关闭时 OCR 认完只亮悬浮球，点一下再分析。", 11f, sub))
+        card2.addView(text("关闭时自动 OCR 只亮悬浮球，点分析后核对；手动截屏仍直接打开核对页。", 11f, sub))
 
         // --- 知识库 / 关联上下文（D 阶段） ---
         val ctxRow = toggleRow("记录聊天历史（只存本机，用于关联上下文）", prefs.contextEnabled)
@@ -463,6 +463,7 @@ class SettingsActivity : AppCompatActivity() {
     // Held as fields because several test buttons read each other's key box.
     private lateinit var judgeKeyEdit: EditText
     private lateinit var replyKeyEdit: EditText
+    private lateinit var replyBaseInput: EditText
     private lateinit var visionKeyEdit: EditText
 
     private fun providerOf(idx: Int) = when (idx) {
